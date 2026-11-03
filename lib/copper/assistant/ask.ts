@@ -26,6 +26,12 @@ const MAX_STEPS = 5;
 
 const APOLOGY = "Sorry, I couldn't answer that just now. Please try again.";
 
+/** The shopper only sees the apology; this puts the real reason in the server log. */
+function logFailure(error: unknown) {
+  const reason = error instanceof Error ? error.message : String(error);
+  console.error(`[ask-copper] ${reason}`);
+}
+
 export async function askCopper(
   request: AskCopperRequest,
 ): Promise<AskCopperResult> {
@@ -117,6 +123,7 @@ export async function askCopper(
         } else if (part.type === "text-delta") {
           reply += part.text;
         } else if (part.type === "error") {
+          logFailure(part.error);
           failed = true;
         } else {
           continue;
@@ -133,7 +140,8 @@ export async function askCopper(
       // empty reply gets the apology, never a real one.
       if (reply.trim() === "") reply = APOLOGY;
       done(snapshot("done"));
-    } catch {
+    } catch (error) {
+      logFailure(error);
       if (reply.trim() === "") reply = APOLOGY;
       done(snapshot("error"));
     }
